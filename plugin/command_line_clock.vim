@@ -35,13 +35,6 @@ let g:loaded_plugin_command_line_clock = 1
 " Timer ID, which would never be called except on <F9> plug reload.
 let s:timer = 0
 
-" Track the last seen message, to try not to clobber a newly minted message
-" too soon (i.e., let's not frustrate the user by clobbering new messages).
-let s:last_message = ''
-" g:CommandLineClockRepeatTime multiplier: How long to wait after another
-" message is detected before updating clock.
-let s:new_message_backoff_count = 0
-
 function! s:StopTheClock()
   if ! exists('s:timer') || ! s:timer | return | endif
 
@@ -99,7 +92,20 @@ function! s:StartTheClock()
   "       let g:CommandLineClockBackoffMultiplier = 1010
   "
   if !exists('g:CommandLineClockRepeatTime')
+    " 2021-02-07: Now I'm not so sure, 101 is generally fine,
+    " but 50 does better when scrolling, for which there is
+    " no autocommand (WinScrolled?). At 101, when scrolling,
+    " the flicker is noticeable -- the clock disappears for
+    " up to 100 msec., which is very perceivable. At 50, it
+    " redraws much more noticeably quicker, still a flicker,
+    " but more a flicker and less a slow on off on off. And
+    " at 5, it's a very fast flicker. / Though when I compare
+    " how it looks when I'm not staring at the clock -- out of
+    " the corner of my eye, how I'll usually experience it --
+    " then I cannot really tell a difference between 'em.
     let g:CommandLineClockRepeatTime = 101
+    "  let g:CommandLineClockRepeatTime = 50
+    "  let g:CommandLineClockRepeatTime = 5
   endif
 
   " The back-off multiplier represents how long to wait after a new message
@@ -114,38 +120,42 @@ function! s:StartTheClock()
   "   determined by this BackoffMultiplier multiplied by the RepeatTime.
   if !exists('g:CommandLineClockBackoffMultiplier')
     let g:CommandLineClockBackoffMultiplier = 50
+    "  let g:CommandLineClockBackoffMultiplier = 101
+    "  let g:CommandLineClockBackoffMultiplier = 1010
   endif
 
   let s:timer = timer_start(g:CommandLineClockRepeatTime, 'CommandLineClockPaint', { 'repeat': -1 })
 endfunction
 
+" +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ "
+
+" When a new message is detected and this plugin needs to wait to repaint
+" the clock, the s:new_message_backoff_count is set to the repeat time,
+" g:CommandLineClockRepeatTime, and is used to count down to when it's
+" okay to paint again.
+let s:new_message_backoff_count = 0
+
+" Avoid calling `echo` unnecessarily on every timer event, lest the command
+" line flicker (sorta; at least on Mint MATE 19.3, it looks like the top of
+" a line of characters, possibly the buffer filename, e.g.,
+"   plugin/command_line_clock.vim" 197L, 7795C
+" is printed but then quickly overwritten).
+" Track the previous date time that was echoed to avoid echoing again
+" until the clock time changes, or until we know we have to repaint.
+let s:previous_clock_datetime = ''
+
 function! CommandLineClockPaint(timer)
-  " Guard clause: Only update clock in Normal and Insert mode.
-  " - E.g., if dubs_grep_ready installed and user pressed `\g` to search,
-  "   Vim waits for user input in the command window (mode() ==# 'c').
-  "   If we :echo'ed during this time, it slowly scrolls up the command
-  "   window input prompt.
-  if mode() !=# 'n' && mode() !=# 'i' && mode() !=# 's' | return | endif
+  " Scrolling the window clears the command line but is not a watchable event
+  " (though there is a feature request for a 'WinScrolled' autocommand), so we
+  " have to manually check (poll on every timer event).
+  call EnsureRepaintsIfWindowScrolled()
 
   " +++
 
-  " Guard clause: If a more recent message found last in history, we
-  " don't know how long that message has been displayed, and if user
-  " has had ample time to digest it, so hold off.
-  " https://stackoverflow.com/questions/5441697/how-can-i-get-last-echoed-message-in-vimscript
-  " Oh, brilliant! :messages takes a *count*!
-  redir => l:final_message
-  1messages
-  redir END
-  if l:final_message != s:last_message
-    let s:last_message = l:final_message
-    if s:last_message != ""
-      let s:new_message_backoff_count = g:CommandLineClockBackoffMultiplier
-      return
-    endif
-  endif
-  " For the timer events immediately following new s:last_message,
-  " honor the backoff countdown.
+  " Bouncer Clause #1 (aka Guard Clause):
+  " Use backoff countdown to avoid clobbering new messages too quickly.
+  " - Note that we always check s:new_message_backoff_count first so that we
+  "   always decrement the backoff count on each clock tick/timer event.
   if s:new_message_backoff_count > 0
     let s:new_message_backoff_count -= 1
     return
@@ -153,9 +163,24 @@ function! CommandLineClockPaint(timer)
 
   " +++
 
+  " Guard Clause #2: Only update clock in Normal and Insert mode.
+  " - E.g., if dubs_grep_steady is installed and user pressed `\g` to search,
+  "   Vim waits for user input in the command window (mode() ==# 'c').
+  "   If we :echo'ed during this time, it would scroll up the command
+  "   window input prompt and otherwise mess with the user.
+  if mode() !=# 'n' && mode() !=# 'i' && mode() !=# 's' | return | endif
+
+  " +++
+
   let l:clock_day = strftime('%Y-%m-%d')
   let l:clock_hours = strftime('%H:%M')
   let l:clock_datetime = printf('%s %s', l:clock_day, l:clock_hours)
+
+  " +++
+
+  " Guard Clause #3: Avoid repeating same clock time to avoid over-
+  " echoing and causing command line artifacts.
+  if l:clock_datetime == s:previous_clock_datetime | return | endif
 
   " +++
 
@@ -168,9 +193,79 @@ function! CommandLineClockPaint(timer)
   " The %{width}S right-aligns a string in the indicated width.
   exec "echo printf('%" . l:cols . "S', '" . l:clock_datetime . "')"
 
-  " +++
-
+  let s:previous_clock_datetime = l:clock_datetime
 endfunction
+
+" +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ "
+
+" The command line is cleared when the user scrolls the window, e.g., using the
+" mouse wheel, or Ctrl-y or Ctrl-e (or Ctrl-Up/-Down from dubs_edit_juice.vim).
+"
+" Except that Vim does not send an event on scroll.
+"
+" So here we determine if the window was scrolled since last we checked.
+"
+" - Note that a WinScrolled event was recently (2020) added to NeoVim:
+"     *Implement scroll autocommand* https://github.com/neovim/neovim/pull/13117
+" - And for Vim there are at least two such issues asking for the same:
+"     *The window scroll event*           https://github.com/vim/vim/issues/5181
+"     *Feat. Req: screen scroll autocmd*  https://github.com/vim/vim/issues/3127
+"
+" - See also CursorMoved/CursorMovedI, but hooking these won't
+"   help when the user scrolls *without* moving the cursor.
+"
+" Caveat: Until WinScrolled is available, note that:
+"
+"           Scrolling causes the clock to flicker!
+"
+
+let s:cursorLineNr = 0
+let s:firstVisibleLineNr = 0
+let s:lastVisibleLineNr = 0
+
+function! EnsureRepaintsIfWindowScrolled()
+  let l:cursorLineNr = line(".")
+  let l:firstVisibleLineNr = line("w0")
+  let l:lastVisibleLineNr = line("w$")
+
+  if (l:cursorLineNr != s:cursorLineNr)
+    \ || (l:firstVisibleLineNr != s:firstVisibleLineNr)
+    \ || (l:lastVisibleLineNr != s:lastVisibleLineNr)
+    " Window was scrolled, so command window was cleared,
+    " so clear previous clock state to force a repaint.
+    let s:previous_clock_datetime = ''
+  endif
+
+  let s:cursorLineNr = l:cursorLineNr
+  let s:firstVisibleLineNr = l:firstVisibleLineNr
+  let s:lastVisibleLineNr = l:lastVisibleLineNr
+endfunction
+
+" +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ "
+
+" Use the CmdlineChanged event to enable the backoff timeout, to avoid
+" clobbering a newly written message before the user has had time to
+" read it.
+"
+" But note that CmdlineChanged is not 100% inclusive. For instance,
+" scrolling the window clears the command line window, but that does
+" not tickle CmdlineChanged, and there's otherwise no autocommand for
+" scroll (though see 'WinScrolled' feature request, mentioned above).
+" But we also cannot read what's in the command window, so this is the
+" best we've got.
+
+function! s:CreateEventHandlers()
+  augroup command_line_clock_autocommands
+    autocmd!
+    autocmd CmdlineChanged *
+      \ let s:new_message_backoff_count = g:CommandLineClockBackoffMultiplier
+      \ | let s:previous_clock_datetime = ''
+  augroup END
+endfunction
+
+" +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ "
+
+call s:CreateEventHandlers()
 
 call s:StartTheClock()
 
