@@ -144,7 +144,17 @@ let s:new_message_backoff_count = 0
 " until the clock time changes, or until we know we have to repaint.
 let s:previous_clock_datetime = ''
 
+let s:first_time_through = 1
+
 function! CommandLineClockPaint(timer)
+
+  if s:first_time_through == 1
+    " On MacVim, do not call `echo` when first run on startup, else Vim prompts
+    " (via the command window): 'Press ENTER or type command to continue'.
+    let s:first_time_through = 0
+    return
+  endif
+
   " Scrolling the window clears the command line but is not a watchable event
   " (though there is a feature request for a 'WinScrolled' autocommand), so we
   " have to manually check (poll on every timer event).
