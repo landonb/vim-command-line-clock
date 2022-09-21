@@ -111,7 +111,7 @@ function! s:StartTheClock()
   " The back-off multiplier represents how long to wait after a new message
   " is detected before repainting the clock (and overwriting the message).
   " This is suppose to give the user time to see (and read) whatever new
-  " message arrived. The value is represented as a multipler of the timer
+  " message arrived. The value is represented as a multiplier of the timer
   " repeat time so that we don't have to use more than the one timer, which
   " we treat as somewhat of a clock tick (though in reality I don't know that
   " Vim promises the timer is called on time, so there could easily be some
