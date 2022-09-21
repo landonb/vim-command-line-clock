@@ -19,6 +19,12 @@ This plug-in requires Vim v8.0 or greater, to take advantage of timers.
 
 Nothing. If this plugin is loaded, it'll show a clock in the command window.
 
+For example, here's the lower-right hand corner of Vim running on
+Linux Mint MATE. The arrow points to the clock that shows up in the
+Vim command window:
+
+![vim-command-line-clock example](doc/assets/vim-command-line-clock-se-corner-MATE-desktop.png "vim-command-line-clock example")
+
 Note that the clock will be temporarily hidden when other messages
 are printed to the command window. (E.g., type ``:echo "hello"`` and
 the clock will disappear while you're typing the command, and for a
