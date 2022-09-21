@@ -46,13 +46,21 @@ To set an option, include a line like the following in your `~/.vimrc`:
 
 The following options are available:
 
-- `g:CommandLineClockDisabled` — Boolean value; either 0 or 1 (default: 0)
+- `g:CommandLineClockDisabled` — Boolean value; either 0 or 1 (default: 0).
 
   Set this variable truthy to disable the plugin.
 
-- `g:CommandLineClockRepeatTime` — Non-negative integer value (default: 1010).
+- `g:CommandLineClockRepeatTime` — Non-negative integer value (default: 101).
 
   Determines how often to run the timer that updates the clock (in milliseconds).
+
+- `g:CommandLineClockBackoffMultiplier` - (default: 50).
+
+  How long to wait after a message is detected in the command window
+  before repainting the clock (and overwriting the message). The length
+  of time is this multiplier multiplied by the repeat time (e.g., 101 * 50
+  = 5,050 msec.). This feature gives the user time to see (and read) whatever
+  message was printed to the command window, before the clock is repainted.
 
 ## Installation
 
