@@ -6,9 +6,10 @@ An answer to the age-old question after hiding the macOS menu bar,
 
 ## Introduction
 
-In MacVim, this plugin maintains a clock in the command window.
+This plugin shows the date and time of day in the Vim command window.
 
-*(WIP: I'm also demoing a clock in the titlebar. This plugin is new and these first few commits are very much works-in-progress. -2021-02-01)*
+The author finds this useful on macOS, because I like to hide the
+macOS menu bar, which is normally where you'd see the clock.
 
 ### Requirements
 
@@ -16,7 +17,18 @@ This plug-in requires Vim v8.0 or greater, to take advantage of timers.
 
 ## Usage
 
-Nothing. If this plugin is loaded, it'll show a clock in MacVim.
+Nothing. If this plugin is loaded, it'll show a clock in the command window.
+
+Note that the clock will be temporarily hidden when other messages
+are printed to the command window. (E.g., type ``:echo "hello"`` and
+the clock will disappear while you're typing the command, and for a
+number of seconds after running the command, while the echo message
+is displayed.)
+
+## See Also
+
+If you'd like to show a clock in the title bar, see a similar plugin:
+[vim-title-bar-time-of-day](https://www.github.com/landonb/vim-title-bar-time-of-day)
 
 ## Options
 
