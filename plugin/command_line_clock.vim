@@ -162,6 +162,29 @@ function! CommandLineClockPaint(timer)
 
   " +++
 
+  " Don't paint the clock if command line is waiting for input.
+  " - E.g., don't print during `f` commands or equivalent.
+  "   - For example, vim-easymotion's <Plug>(easymotion-overwin-f2) command
+  "     prompts user for two input characters, then prints another message
+  "     and prompts for the character of the target to which to jump.
+  "     - If we print the clock, it'll add a line to the prompt. (The user
+  "       can still enter their text, but when the clock prints, it's
+  "       distracting (because it doesn't happen right away), and it
+  "       pushes the prompt up a line. Just bad UX.)
+  " - So check state() to see what's going on.
+  "   - When vim-easymotion is waiting on input, state() includes 'S':
+  "     - 'S' — not triggering SafeState or SafeStateAgain,
+  "             e.g. after |f| or a count
+  "   - When command output has scrolled, state() includes 's':
+  "     - 's' — screen has scrolled for messages
+  "   - When a callback is received (this function, via timer_start)
+  "     state() includes 'c'.
+  "     - So we'll check that state() is *only* 'c', otherwise come
+  "       back later.
+  if state() != "c"
+    return
+  endif
+
   " Bouncer Clause #1 (aka Guard Clause):
   " Use backoff countdown to avoid clobbering new messages too quickly.
   " - Note that we always check s:new_message_backoff_count first so that we
