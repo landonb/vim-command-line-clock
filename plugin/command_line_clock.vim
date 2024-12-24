@@ -17,7 +17,7 @@
 " - Via: https://github.com/embrace-vim/vim-source-reloader#↩️
 
 if expand('%:p') ==# expand('<sfile>:p')
-  unlet g:loaded_plugin_command_line_clock
+  unlet! g:loaded_plugin_command_line_clock
 endif
 
 if exists('g:loaded_plugin_command_line_clock') || &cp || v:version < 800
