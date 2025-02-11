@@ -1,6 +1,6 @@
 *vim-command-line-clock.txt*   Maintains a clock in the command line.
 
-Command Line Clock~
+Command Line Clock 🕰️~
                                      *vim-command-line-clock-author*
 
 Author: Landon Bouma <http://github.com/landonb>

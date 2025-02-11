@@ -1,9 +1,9 @@
-" Maintain a clock in the command line window
+" vim:tw=0:ts=2:sw=2:et:norl:ft=vim
 " Author: Landon Bouma <https://tallybark.com/>
-" Online: https://github.com/landonb/vim-command-line-clock
+" Project: https://github.com/landonb/vim-command-line-clock#🕰️
 " License: https://creativecommons.org/publicdomain/zero/1.0/
-"  vim:tw=0:ts=2:sw=2:et:norl:ft=vim
 " Copyright © 2021 Landon Bouma.
+" Summary: Maintain a clock in the command line window
 
 " Age-old answer to Quelle heure est il on a mac with no menu bar.
 

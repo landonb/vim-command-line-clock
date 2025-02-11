@@ -1,4 +1,4 @@
-# vim-command-line-clock
+# vim-command-line-clock 🕰️
 
 An answer to the age-old question after hiding the macOS menu bar,
 
